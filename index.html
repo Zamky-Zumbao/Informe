@@ -437,7 +437,7 @@
       <option value="Nehemias Jara">Nehemias Jara</option>
       <option value="Danisa Molina">Danisa Molina</option>
       <option value="Juan Guajardo">Juan Guajardo</option>
-      
+
     </select>
   </div>
 
@@ -567,7 +567,7 @@ let isGeneratingPDF = false;
 // ==================== CONFIGURACIÓN MICROSOFT ENTRA ID ====================
 const msalConfig = {
   auth: {
-    clientId: '774aa002-531a-4271-a1d8-f7bc4da9bc3d',
+    clientId: '7e57c5ff-f9a0-4a58-a038-bf80467aadd3',
     authority: 'https://login.microsoftonline.com/3b2a8aaa-7404-4137-8bae-cbd67f7003c2',
     redirectUri: window.location.origin
   },
@@ -576,6 +576,9 @@ const msalConfig = {
 
 const msalInstance = new msal.PublicClientApplication(msalConfig);
 let usuarioAutenticado = null;
+
+// Dominio permitido (respaldo por si Azure no filtra correctamente)
+const DOMINIO_PERMITIDO = 'lascondes.cl';
 
 // ==================== AUTENTICACIÓN ====================
 async function obtenerToken() {
@@ -591,6 +594,13 @@ async function obtenerToken() {
     console.warn('⚠️ Error obteniendo token:', error.message);
     return null;
   }
+}
+
+function validarDominio(account) {
+  if (!account || !account.username) return false;
+  const partes = account.username.split('@');
+  if (partes.length !== 2) return false;
+  return partes[1].toLowerCase() === DOMINIO_PERMITIDO;
 }
 
 function actualizarBotonSesion(autenticado) {
@@ -619,6 +629,11 @@ async function iniciarSesionMicrosoft() {
   try {
     const accounts = msalInstance.getAllAccounts();
     if (accounts.length > 0) {
+      if (!validarDominio(accounts[0])) {
+        mostrarToast('❌ Solo se permiten cuentas @lascondes.cl');
+        await msalInstance.logoutRedirect();
+        return null;
+      }
       usuarioAutenticado = accounts[0];
       await obtenerToken();
       mostrarToast(`✅ Sesión iniciada: ${usuarioAutenticado.username}`);
@@ -637,18 +652,29 @@ async function handleRedirectResponse() {
   try {
     const response = await msalInstance.handleRedirectPromise();
     if (response && response.account) {
+      if (!validarDominio(response.account)) {
+        mostrarToast('❌ Solo se permiten cuentas @lascondes.cl');
+        await msalInstance.logoutRedirect();
+        return;
+      }
       usuarioAutenticado = response.account;
       await obtenerToken();
       mostrarToast(`✅ Bienvenido, ${usuarioAutenticado.username}`);
       actualizarBotonSesion(true);
     }
-  } catch (error) { /* silencioso */ }
+  } catch (error) {
+    console.warn('Error en redirect:', error);
+  }
 }
 
 async function verificarSesion() {
   await handleRedirectResponse();
   const accounts = msalInstance.getAllAccounts();
   if (accounts.length > 0) {
+    if (!validarDominio(accounts[0])) {
+      await msalInstance.logoutRedirect();
+      return;
+    }
     usuarioAutenticado = accounts[0];
     await obtenerToken();
     actualizarBotonSesion(true);
@@ -925,7 +951,6 @@ function cerrarModal(limpiar = false) {
 }
 
 function limpiarFormularioPostPDF() {
-  // Campos de texto
   document.getElementById('proc-trigger').value = '';
   document.getElementById('nombre-pdf').value = '';
   document.getElementById('direccion').value = '';
@@ -944,26 +969,20 @@ function limpiarFormularioPostPDF() {
   document.getElementById('res-emergencias-operador').value = '';
   document.getElementById('res-cmu').value = 'No';
 
-  // Chips de categoría
   document.querySelectorAll('#cat-chips .chip').forEach(c => c.classList.remove('active'));
 
-  // Lesionados
   document.getElementById('lesionados-container').innerHTML = '';
   lesionadoCounter = 0;
 
-  // Fotos del registro fotográfico
   document.getElementById('foto-input').value = '';
   document.getElementById('preview-fotos').innerHTML = '';
 
-  // Resetear fecha y hora
   const now = new Date();
   document.getElementById('fecha').value = now.toISOString().split('T')[0];
   document.getElementById('hora').value = now.toTimeString().slice(0, 5);
 
-  // Limpiar estilos de error
   document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
 
-  // Scroll al inicio
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   console.log('✅ Formulario limpiado post-PDF');
@@ -1292,7 +1311,6 @@ async function generarPDF() {
 
     const pdfBlob = doc.output('blob');
 
-    // Descarga local
     const link = document.createElement('a');
     link.href = URL.createObjectURL(pdfBlob);
     link.download = nombreArchivo;
@@ -1300,13 +1318,11 @@ async function generarPDF() {
 
     mostrarToast(`📎 PDF descargado: ${nombreArchivo}`);
 
-    // ✅ OPCIÓN A: Cerrar modal Y limpiar formulario
     cerrarModal(true);
 
   } catch (error) {
     console.error('❌ Error generando PDF:', error);
     mostrarToast('❌ Error al generar el PDF');
-    // ⚠️ En caso de error, NO limpiamos (para no perder datos del usuario)
     cerrarModal(false);
   } finally {
     clearTimeout(timeoutGlobal);
