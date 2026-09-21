@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+<title>Municipalidad de Las Condes</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --azul-lascondes: #1664c0;
+    --azul-claro: #4087cf;
+    --gris-fondo: #f5f7fc;
+    --blanco: #ffffff;
+    --texto-oscuro: #1a2634;
+    --texto-gris: #4a5a6e;
+    --borde-suave: #e2e8f0;
+    --accent-teal: #2c9e8c;
+    --error-rojo: #e74c3c;
+  }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', 'Arial', sans-serif;
+    background: var(--gris-fondo);
+    color: var(--texto-oscuro);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .header {
+    background: linear-gradient(135deg, var(--azul-lascondes) 0%, #0f4a8a 100%);
+    border-bottom: 2px solid rgba(255,255,255,0.2);
+    padding: 12px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .logo-muni { display: flex; align-items: center; gap: 10px; }
+  .logo-icono {
+    width: 55px; height: 45px;
+    background: var(--blanco);
+    border-radius: 20%;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .logo-icono img { width: 100%; height: 100%; object-fit: cover; }
+  .logo-texto {
+    font-weight: 700; font-size: 12px; letter-spacing: 0.5px;
+    color: white; line-height: 1.3;
+  }
+  .logo-texto small { font-size: 9px; font-weight: normal; opacity: 0.9; }
+
+  .btn-sesion {
+    background: rgba(255,255,255,0.2);
+    border: none; border-radius: 20px;
+    padding: 5px 12px; color: white;
+    cursor: pointer; font-size: 11px;
+    font-family: 'Inter', sans-serif;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 130px; transition: all 0.2s;
+  }
+  .btn-sesion:hover { background: rgba(255,255,255,0.3); }
+
+  .title-stack { text-align: center; }
+  .title-emergencia {
+    font-size: 16px; font-weight: 800;
+    color: white; letter-spacing: 1px;
+  }
+
+  .section {
+    background: var(--blanco);
+    border-radius: 18px;
+    margin: 12px 16px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.05);
+    border: 1px solid var(--borde-suave);
+  }
+
+  .section-label {
+    font-size: 12px; font-weight: 800;
+    letter-spacing: 1.2px; text-transform: uppercase;
+    color: var(--azul-lascondes);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+    border-left: 3px solid var(--azul-lascondes);
+    padding-left: 12px;
+  }
+
+  label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: var(--texto-gris); margin-bottom: 5px;
+  }
+  label.required::after { content: " *"; color: var(--error-rojo); }
+
+  input[type="text"], input[type="date"], input[type="time"], select, textarea {
+    width: 100%; background: #ffffff;
+    border: 1px solid var(--borde-suave);
+    border-radius: 12px;
+    font-family: 'Inter', 'Segoe UI', 'Arial', sans-serif;
+    font-size: 14px; padding: 10px 14px; outline: none;
+    transition: all 0.2s;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--azul-lascondes);
+    box-shadow: 0 0 0 2px rgba(22,100,192,0.2);
+  }
+
+  input.error { border-color: var(--error-rojo); background: #fff5f5; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 6px 14px; border-radius: 40px;
+    border: 1px solid var(--borde-suave);
+    background: #f8fafc; color: var(--texto-oscuro);
+    font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .chip.active {
+    background: var(--azul-lascondes);
+    border-color: var(--azul-lascondes);
+    color: white;
+    box-shadow: 0 2px 6px rgba(22,100,192,0.3);
+  }
+
+  .resource {
+    background: #f9fafc;
+    border: 1px solid var(--borde-suave);
+    border-radius: 16px;
+    padding: 12px 15px;
+    margin-bottom: 12px;
+  }
+
+  .resource-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  }
+
+  .resource-icon {
+    width: 32px; height: 32px; border-radius: 32px;
+    background: rgba(22,100,192,0.1);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--azul-lascondes); font-size: 18px;
+  }
+
+  .resource-label { font-weight: 600; font-size: 14px; }
+
+  .lesionado-card {
+    background: #ffffff;
+    border: 1px solid var(--borde-suave);
+    border-radius: 20px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .btn-add {
+    width: 100%; background: transparent;
+    border: 1.5px dashed var(--azul-lascondes);
+    color: var(--azul-lascondes);
+    font-weight: 600; border-radius: 40px;
+    padding: 10px; cursor: pointer;
+  }
+
+  .btn-submit {
+    background: var(--azul-lascondes);
+    border: none; padding: 14px; width: 100%;
+    border-radius: 50px; font-weight: 700;
+    color: white; font-size: 16px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 200;
+    align-items: flex-end;
+  }
+  .modal {
+    background: white; max-height: 90vh;
+    border-radius: 28px 28px 0 0; overflow: auto;
+  }
+
+  .report-out {
+    background: #f8fafc; font-family: monospace;
+    border-left: 4px solid var(--azul-lascondes);
+    white-space: pre-wrap; font-size: 11px;
+    padding: 12px; margin: 12px 0;
+    max-height: 400px; overflow: auto;
+  }
+
+  .btn-copy, .btn-pdf, .btn-close {
+    border-radius: 40px; padding: 8px 16px; border: none; cursor: pointer;
+  }
+  .btn-copy { background: var(--accent-teal); color: white; }
+  .btn-pdf { background: var(--azul-lascondes); color: white; margin-left: 8px; }
+  .btn-close { background: #95a5a6; color: white; margin-left: 8px; }
+
+  .custom-dropdown { position: relative; width: 100%; }
+  .dropdown-input {
+    width: 100%; background: #ffffff;
+    border: 1px solid var(--borde-suave);
+    border-radius: 12px;
+    font-family: 'Inter', 'Segoe UI', 'Arial', sans-serif;
+    font-size: 14px; padding: 10px 14px;
+    outline: none; cursor: pointer; transition: all 0.2s;
+  }
+  .dropdown-input:focus {
+    border-color: var(--azul-lascondes);
+    box-shadow: 0 0 0 2px rgba(22,100,192,0.2);
+  }
+  .dropdown-list {
+    background: white;
+    border: 1px solid var(--azul-lascondes);
+    border-radius: 12px; max-height: 200px;
+    overflow-y: auto; position: absolute;
+    width: 100%; z-index: 999;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .dropdown-item {
+    padding: 8px 12px; cursor: pointer; font-size: 13px;
+  }
+  .dropdown-item:hover { background: rgba(22,100,192,0.08); }
+
+  #preview-fotos {
+    display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px;
+  }
+  .preview-img {
+    position: relative; width: 80px; height: 80px;
+    border: 1px solid var(--borde-suave);
+    border-radius: 8px; overflow: hidden;
+  }
+  .preview-img img { width: 100%; height: 100%; object-fit: cover; }
+  .preview-img button {
+    position: absolute; top: 2px; right: 2px;
+    background: rgba(0,0,0,0.6); color: white;
+    border: none; border-radius: 50%;
+    width: 18px; height: 18px;
+    cursor: pointer; font-size: 10px;
+  }
+
+  .field { margin-bottom: 16px; }
+
+  .spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.6s linear infinite;
+    margin-right: 8px; vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 768px) {
+    .header-top { flex-wrap: wrap; justify-content: center; text-align: center; }
+    .logo-muni { flex: 1; }
+    .btn-sesion { max-width: 100px; font-size: 9px; padding: 3px 8px; }
+    .title-emergencia { font-size: 14px; }
+    .section { margin: 8px; padding: 12px; }
+    .section-label { font-size: 11px; }
+    label { font-size: 11px; }
+    input, select, textarea { font-size: 16px; padding: 10px 12px; }
+    .chip { padding: 5px 12px; font-size: 11px; }
+    .lesionado-card { flex-direction: column; }
+    .btn-submit { font-size: 14px; padding: 12px; }
+    .report-out { font-size: 10px; }
+    .dropdown-item { padding: 10px 12px; font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo-muni">
+      <div class="logo-icono">
+        <img src="https://i.postimg.cc/MGhWmdq0/LC.jpg" alt="LC">
+      </div>
+      <div class="logo-texto">
+        MUNICIPALIDAD DE LAS CONDES<br>
+        <small>Depto. Gestión de Riesgos y Desastres</small>
+      </div>
+    </div>
+    <button id="btn-sesion" class="btn-sesion">🔐 Iniciar sesión</button>
+    <div class="title-stack">
+      <div class="title-emergencia">INFORME DE EMERGENCIA</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">INGRESO DE CLASIFICACIONES</div>
+  <div class="field">
+    <label class="required">Categoría</label>
+    <div class="chips" id="cat-chips">
+      <div class="chip" data-val="Incidente" onclick="toggleChip(this, 'cat-chips', false)">🔶 Incidente</div>
+    </div>
+  </div>
+  <div style="display: grid; grid-template-columns: 1fr 140px; gap: 12px;">
+    <div class="field" style="position: relative; margin-bottom: 0;">
+      <label class="required">Seleccionar Procedimiento</label>
+      <div class="custom-dropdown">
+        <input type="text" id="proc-trigger" class="dropdown-input" placeholder="Seleccione..." readonly>
+        <div class="dropdown-list" id="proc-list" style="display:none;"></div>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom: 0;">
+      <label class="required">N° Procedimiento</label>
+      <input type="text" id="nombre-pdf" maxlength="10" placeholder="Ej: 3458637">
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Fecha y Ubicación</div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px;">
+    <div class="field" style="margin-bottom: 0;">
+      <label class="required">📅 FECHA</label>
+      <input type="date" id="fecha">
+    </div>
+    <div class="field" style="margin-bottom: 0;">
+      <label class="required">🕛 HORA</label>
+      <input type="time" id="hora">
+    </div>
+  </div>
+  <div class="field" style="margin-bottom: 0;">
+    <label class="required">📍 Dirección / Intersección</label>
+    <input type="text" id="direccion" placeholder="Ej: Av. Las Condes / Av. Apoquindo">
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Características de la vía</div>
+
+  <div class="field">
+    <label>Calzada / Acera</label>
+    <div class="custom-dropdown">
+      <input type="text" id="calzada-trigger" class="dropdown-input" placeholder="Seleccione una opción..." readonly>
+      <div class="dropdown-list" id="calzada-list" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Pistas</label>
+    <div class="custom-dropdown">
+      <input type="text" id="pista-trigger" class="dropdown-input" placeholder="Seleccione una opción..." readonly>
+      <div class="dropdown-list" id="pista-list" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Condición del tránsito</label>
+    <div class="custom-dropdown">
+      <input type="text" id="transit-trigger" class="dropdown-input" placeholder="Seleccione una opción..." readonly>
+      <div class="dropdown-list" id="transit-list" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Recursos Asignados</div>
+
+  <div class="resource">
+    <div class="resource-header">
+      <div class="resource-icon">🚨</div>
+      <span class="resource-label">Seguridad Pública</span>
+    </div>
+    <input type="text" id="res-segpub" placeholder="Nombre / código">
+  </div>
+
+  <div class="resource">
+    <div class="resource-header">
+      <div class="resource-icon">👮</div>
+      <span class="resource-label">Carabineros</span>
+    </div>
+    <input type="text" id="res-carabineros" placeholder="Ej: RP-2340, Tenencia Las Condes">
+  </div>
+
+  <div class="resource">
+    <div class="resource-header">
+      <div class="resource-icon">🚒</div>
+      <span class="resource-label">Bomberos</span>
+    </div>
+    <input type="text" id="res-bomberos" placeholder="Ej: Carro 27, 3ra Compañía">
+  </div>
+
+  <div class="resource">
+    <div class="resource-header">
+      <div class="resource-icon">🆘</div>
+      <span class="resource-label">Emergencias</span>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <select id="res-emergencias-vehiculo" style="flex: 1; min-width: 120px;">
+        <option value="No">Seleccionar vehículo</option>
+        <option value="ME-1 Silverado">ME-1</option>
+        <option value="ME-2 Colorado">ME-2</option>
+        <option value="ME-3 JMC">ME-3</option>
+        <option value="ME-4 Camion">ME-4</option>
+      </select>
+      <select id="res-emergencias-operador" style="flex: 1.2; min-width: 140px;">
+        <option value="">Operador</option>
+        <option value="OC:01 Héctor Vásquez">Héctor Vásquez</option>
+        <option value="OC:02 Daniel Troncoso">Daniel Troncoso</option>
+        <option value="OC:03 Juan Abarca">Juan Abarca</option>
+        <option value="OC:04 José Arriagada">José Arriagada</option>
+        <option value="OC:05 Ignacio Lagos">Ignacio Lagos</option>
+        <option value="OC:06 Simón Oyarzun">Simón Oyarzun</option>
+        <option value="OC:07 José Tamarín">José Tamarín</option>
+        <option value="OC:08 Sergio Toledo">Sergio Toledo</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="resource">
+    <div class="resource-header">
+      <div class="resource-icon">🎧</div>
+      <span class="resource-label">Operadores CMU</span>
+    </div>
+    <select id="res-cmu">
+      <option value="No">Seleccionar...</option>
+      <option value="Claudia Casanga">Claudia Casanga</option>
+      <option value="Daniel Jimenez">Daniel Jimenez</option>
+      <option value="Nehemias Jara">Nehemias Jara</option>
+      <option value="Danisa Molina">Danisa Molina</option>
+      <option value="Juan Guajardo">Juan Guajardo</option>
+      <option value="Tamara Grau">Tamara Grau</option>
+    </select>
+  </div>
+
+  <div class="resource" style="margin-top: 12px;">
+    <div class="resource-header">
+      <div class="resource-icon">🚑</div>
+      <span class="resource-label">Ambulancia(s)</span>
+    </div>
+    <div class="custom-dropdown">
+      <input type="text" id="ambulancia-trigger" class="dropdown-input" placeholder="Seleccione una opción..." readonly>
+      <div class="dropdown-list" id="ambulancia-list" style="display:none;"></div>
+    </div>
+    <div id="ambulancia-otra-container" style="display:none; margin-top: 8px;">
+      <label style="font-size: 11px;">Especificar otra ambulancia:</label>
+      <input type="text" id="ambulancia-otra" placeholder="Nombre de la ambulancia..." style="font-size: 13px;">
+    </div>
+  </div>
+
+  <div class="resource" style="margin-top: 12px;">
+    <div class="resource-header">
+      <div class="resource-icon">👨‍⚕️</div>
+      <span class="resource-label">Profesional Médico</span>
+    </div>
+    <input type="text" id="res-profesional-medico" placeholder="Ej: Dr. Juan Pérez, Enfermero/a, Paramédico">
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">Descripción del Hecho</div>
+  <textarea id="descripcion" rows="3" placeholder="Describa con detalle lo ocurrido..."></textarea>
+</div>
+
+<div class="section">
+  <div class="section-label">Registro Fotográfico</div>
+  <label for="foto-input">📸 Seleccionar fotografías</label>
+  <input type="file" id="foto-input" accept="image/*" multiple>
+  <div id="preview-fotos"></div>
+</div>
+
+<div class="section">
+  <div class="section-label">Datos de Lesionados</div>
+  <div id="lesionados-container"></div>
+  <button class="btn-add" onclick="addLesionado()">+ Agregar lesionado</button>
+</div>
+
+<div class="footer" style="padding:16px;">
+  <button class="btn-submit" onclick="generarInforme()">Generar Informe</button>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div style="width:50px; height:4px; background:#ccc; margin:12px auto;"></div>
+    <div style="padding:20px;">
+      <h2 style="font-family:'Inter';">Informe GRRD</h2>
+      <div class="report-out" id="report-text"></div>
+      <button class="btn-copy" onclick="copiarInforme()">Copiar informe</button>
+      <button class="btn-pdf" onclick="generarPDF()">Descargar PDF</button>
+      <button class="btn-close" onclick="cerrarModal(false)">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1664c0; color:white; padding:6px 14px; border-radius:40px; opacity:0; transition:0.2s; pointer-events:none; z-index:300; font-size:12px;">✅ Copiado</div>
+
+<script>
+// ==================== DATOS GLOBALES ====================
+const PROCEDIMIENTOS = [
+  "Accidente de scooter o bicicleta",
+  "Accidente eléctrico en inmueble",
+  "Accidente por inmersión",
+  "Accidente Vehicular con lesionados",
+  "Accidente vehicular sin lesionados",
+  "Amago de incendio",
+  "Anegamiento de domicilio a causa de rotura de matriz o grifo",
+  "Anegamiento de domicilio a causa de sumideros o cámaras tapadas",
+  "Artefacto explosivo o incendiario, detonado",
+  "Artefacto sospechoso, probablemente explosivo o incendiario",
+  "Atropello",
+  "Corte de cables eléctricos en vía pública",
+  "Derrame de combustibles o aceites en vía publica",
+  "Emergencia con resultado de múltiples víctimas",
+  "Escape de gas en domicilio o local comercial",
+  "Escape de gas en vía pública por rotura de matriz",
+  "Explosión de gas al interior de domicilio o local comercial",
+  "Explosión de transformador",
+  "Fuego en basura o escombros",
+  "Fuego en cables eléctricos en vía pública",
+  "Fuego en cámara subterránea",
+  "Fuego en vehículo",
+  "Incendio estructural",
+  "Incendio forestal",
+  "Intento de suicidio en la población",
+  "Intoxicación medicamentosa",
+  "Inundación por desborde de cauce",
+  "Persona caída en vía pública",
+  "Persona con heridas graves y sangramiento profuso",
+  "Persona descompensada en vía pública",
+  "Persona en PCR",
+  "Persona en trabajo de parto",
+  "Persona extraviada en la población",
+  "Persona extraviada, herida o intento de suicidio en zona agreste",
+  "Presencia de sustancias químicas o peligrosas en domicilio o local comercial",
+  "Presencia de sustancias químicas o peligrosas en vía pública",
+  "Remoción en masa o activación de quebradas",
+  "Rescates o salvamentos variados (personas o animales)",
+  "Sumideros tapados por precipitaciones"
+];
+
+const CALZADA_OPCIONES = ["No aplica", "Norte", "Nororiente", "Norponiente", "Oriente", "Poniente", "Sur", "Suroriente", "Surponiente"].sort();
+const PISTA_OPCIONES = ["1ª pista", "2ª pista", "3ª pista", "4ª pista", "Pista única"].sort();
+const TRANSIT_OPCIONES = ["Cortado", "Desvío", "En revisión", "Habilitado", "Obstruido", "Parcialmente obstruido", "Peritaje técnico", "Procedimiento de emergencia", "Restricción de pista", "Tránsito lento"].sort();
+
+const TIPOS_LESION = [
+  "Amputación traumática", "Compromiso de conciencia", "Electrocutado",
+  "Esguince", "Fractura expuesta", "Fractura simple",
+  "Herida cortopunzante con sangramiento / Hemorragia",
+  "Heridas incompatibles con la vida (Fallecimiento)",
+  "Lesión Cervical", "Luxación", "P.C.R.", "Politraumatismo",
+  "Sangramiento profuso", "TEC abierto", "TEC cerrado"
+].sort();
+
+const AMBULANCIAS_OPCIONES = ["Dávila", "Hatzalah", "Indisa", "SAPU", "Santa María", "Otras"].sort();
+
+let lesionadoCounter = 0;
+let isGeneratingPDF = false;
+
+// ==================== CONFIGURACIÓN MICROSOFT ENTRA ID ====================
+const msalConfig = {
+  auth: {
+    clientId: '774aa002-531a-4271-a1d8-f7bc4da9bc3d',
+    authority: 'https://login.microsoftonline.com/3b2a8aaa-7404-4137-8bae-cbd67f7003c2',
+    redirectUri: window.location.origin
+  },
+  cache: { cacheLocation: 'localStorage' }
+};
+
+const msalInstance = new msal.PublicClientApplication(msalConfig);
+let usuarioAutenticado = null;
+
+// ==================== AUTENTICACIÓN ====================
+async function obtenerToken() {
+  try {
+    const account = msalInstance.getAllAccounts()[0];
+    if (!account) return null;
+    const response = await msalInstance.acquireTokenSilent({
+      account: account,
+      scopes: ['user.read']
+    });
+    return response.accessToken;
+  } catch (error) {
+    console.warn('⚠️ Error obteniendo token:', error.message);
+    return null;
+  }
+}
+
+function actualizarBotonSesion(autenticado) {
+  const btnSesion = document.getElementById('btn-sesion');
+  if (!btnSesion) return;
+  if (autenticado && usuarioAutenticado) {
+    const nombreUsuario = usuarioAutenticado.username.split('@')[0];
+    btnSesion.innerHTML = `👤 ${nombreUsuario.substring(0, 15)}`;
+    btnSesion.title = 'Cerrar sesión';
+    btnSesion.onclick = cerrarSesionMicrosoft;
+  } else {
+    btnSesion.innerHTML = '🔐 Iniciar sesión';
+    btnSesion.title = 'Iniciar sesión con cuenta @lascondes.cl';
+    btnSesion.onclick = iniciarSesionMicrosoft;
+  }
+}
+
+async function cerrarSesionMicrosoft() {
+  await msalInstance.logoutRedirect();
+  usuarioAutenticado = null;
+  actualizarBotonSesion(false);
+  mostrarToast('🔓 Sesión cerrada');
+}
+
+async function iniciarSesionMicrosoft() {
+  try {
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+      usuarioAutenticado = accounts[0];
+      await obtenerToken();
+      mostrarToast(`✅ Sesión iniciada: ${usuarioAutenticado.username}`);
+      actualizarBotonSesion(true);
+      return usuarioAutenticado;
+    }
+    await msalInstance.loginRedirect({ scopes: ['user.read'] });
+    return null;
+  } catch (error) {
+    mostrarToast('❌ Error al iniciar sesión');
+    return null;
+  }
+}
+
+async function handleRedirectResponse() {
+  try {
+    const response = await msalInstance.handleRedirectPromise();
+    if (response && response.account) {
+      usuarioAutenticado = response.account;
+      await obtenerToken();
+      mostrarToast(`✅ Bienvenido, ${usuarioAutenticado.username}`);
+      actualizarBotonSesion(true);
+    }
+  } catch (error) { /* silencioso */ }
+}
+
+async function verificarSesion() {
+  await handleRedirectResponse();
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    usuarioAutenticado = accounts[0];
+    await obtenerToken();
+    actualizarBotonSesion(true);
+  }
+}
+
+// ==================== DROPDOWNS ====================
+function toggleDropdown(listId) {
+  const list = document.getElementById(listId);
+  if (list) list.style.display = list.style.display === 'block' ? 'none' : 'block';
+}
+
+function inicializarDropdowns() {
+  const dropdowns = [
+    { listId: 'proc-list', inputId: 'proc-trigger', opciones: PROCEDIMIENTOS },
+    { listId: 'calzada-list', inputId: 'calzada-trigger', opciones: CALZADA_OPCIONES },
+    { listId: 'pista-list', inputId: 'pista-trigger', opciones: PISTA_OPCIONES },
+    { listId: 'transit-list', inputId: 'transit-trigger', opciones: TRANSIT_OPCIONES },
+    { listId: 'ambulancia-list', inputId: 'ambulancia-trigger', opciones: AMBULANCIAS_OPCIONES }
+  ];
+
+  dropdowns.forEach(({ listId, inputId, opciones }) => {
+    const list = document.getElementById(listId);
+    const input = document.getElementById(inputId);
+    if (!list || !input) return;
+
+    opciones.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'dropdown-item';
+      div.textContent = item;
+      div.onclick = () => {
+        input.value = item;
+        list.style.display = 'none';
+        if (inputId === 'ambulancia-trigger') {
+          const otraContainer = document.getElementById('ambulancia-otra-container');
+          if (item === 'Otras') {
+            otraContainer.style.display = 'block';
+            document.getElementById('ambulancia-otra').focus();
+          } else {
+            otraContainer.style.display = 'none';
+            document.getElementById('ambulancia-otra').value = '';
+          }
+        }
+      };
+      list.appendChild(div);
+    });
+    input.onclick = () => toggleDropdown(listId);
+  });
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.custom-dropdown')) {
+    document.querySelectorAll('.dropdown-list').forEach(list => list.style.display = 'none');
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  inicializarDropdowns();
+  const now = new Date();
+  document.getElementById('fecha').value = now.toISOString().split('T')[0];
+  document.getElementById('hora').value = now.toTimeString().slice(0, 5);
+});
+
+function toggleChip(el, groupId, isMultiple = false) {
+  if (isMultiple) {
+    el.classList.toggle('active');
+  } else {
+    let container = document.getElementById(groupId);
+    if (container) {
+      container.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+    }
+  }
+}
+
+function addLesionado() {
+  lesionadoCounter++;
+  let id = lesionadoCounter;
+  let c = document.getElementById('lesionados-container');
+  let card = document.createElement('div');
+  card.className = 'lesionado-card';
+  card.id = `les-${id}`;
+  card.style.display = 'flex';
+  card.style.gap = '16px';
+  card.style.alignItems = 'flex-start';
+  card.style.flexWrap = 'wrap';
+
+  let tiposOptions = '';
+  TIPOS_LESION.forEach(tipo => {
+    tiposOptions += `<div class="chip" data-val="${tipo}" style="padding: 4px 12px; font-size: 12px;" onclick="toggleChip(this, 'les-tipo-${id}', true)">${tipo}</div>`;
+  });
+
+  card.innerHTML = `
+    <div style="flex: 1; min-width: 200px;">
+      <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+        <div style="flex: 1;"><label>NOMBRE</label><input type="text" id="les-nombre-${id}" placeholder="Nombre completo" style="font-size: 13px;"></div>
+        <div style="flex: 1;"><label>RUT</label><input type="text" id="les-rut-${id}" placeholder="XX.XXX.XXX-X" style="font-size: 13px;"></div>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label>Tipo lesión (múltiple)</label>
+        <div class="chips" id="les-tipo-${id}" style="gap: 6px; max-height: 120px; overflow-y: auto; border: 1px solid var(--borde-suave); border-radius: 12px; padding: 8px;">
+          ${tiposOptions}
+        </div>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label>Observación:</label>
+        <input type="text" id="les-obs-${id}" placeholder="Ej: Fractura de tibia izquierda" style="font-size: 13px;">
+      </div>
+      <button style="margin-top: 5px; background: #e74c3c; color: white; border: none; border-radius: 20px; padding: 5px 12px; cursor: pointer; font-size: 11px;" onclick="eliminarLesionado(this)">Eliminar lesionado</button>
+    </div>
+    <div style="flex: 0.8; min-width: 150px; border-left: 1px solid var(--borde-suave); padding-left: 16px;">
+      <label style="font-size: 11px;">📷 Foto carnet</label>
+      <div style="border: 1px dashed var(--azul-lascondes); border-radius: 12px; padding: 10px; text-align: center; min-height: 140px;">
+        <input type="file" id="les-foto-input-${id}" accept="image/*" style="font-size: 11px; margin-bottom: 8px;" onchange="previewLesionadoFoto(${id})">
+        <div id="les-foto-preview-${id}" style="max-width: 100px; max-height: 100px; margin: 0 auto; display: none;">
+          <img id="les-foto-img-${id}" style="max-width: 100%; max-height: 100%; border-radius: 8px;">
+        </div>
+        <div id="les-foto-placeholder-${id}" style="font-size: 10px; color: var(--texto-gris);">Subir foto</div>
+      </div>
+    </div>
+  `;
+  c.appendChild(card);
+}
+
+function eliminarLesionado(btn) {
+  if (confirm('¿Eliminar este lesionado?')) {
+    btn.closest('.lesionado-card').remove();
+  }
+}
+
+function previewLesionadoFoto(id) {
+  const input = document.getElementById(`les-foto-input-${id}`);
+  const previewDiv = document.getElementById(`les-foto-preview-${id}`);
+  const placeholder = document.getElementById(`les-foto-placeholder-${id}`);
+  const img = document.getElementById(`les-foto-img-${id}`);
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      img.src = e.target.result;
+      previewDiv.style.display = 'block';
+      placeholder.style.display = 'none';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function getAmbulancia() {
+  const selectValue = document.getElementById('ambulancia-trigger').value;
+  if (selectValue === 'Otras') {
+    const otraVal = document.getElementById('ambulancia-otra').value.trim();
+    return otraVal || 'Otras (no especificada)';
+  }
+  return selectValue || 'No';
+}
+
+function getSelectedChip(groupId) {
+  let container = document.getElementById(groupId);
+  if (container) {
+    let act = container.querySelector('.chip.active');
+    return act ? act.getAttribute('data-val') || act.textContent.trim() : '';
+  }
+  return '';
+}
+
+function validarFormulario() {
+  let isValid = true;
+  const requiredFields = ['proc-trigger', 'fecha', 'hora', 'direccion', 'nombre-pdf'];
+  requiredFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (!element.value.trim()) {
+      element.classList.add('error');
+      isValid = false;
+    } else {
+      element.classList.remove('error');
+    }
+  });
+  if (!isValid) mostrarToast('❌ Complete los campos obligatorios');
+  return isValid;
+}
+
+function mostrarToast(mensaje) {
+  let t = document.getElementById('toast');
+  t.textContent = mensaje;
+  t.style.opacity = '1';
+  setTimeout(() => t.style.opacity = '0', 3000);
+}
+
+function generarInforme() {
+  if (!validarFormulario()) return;
+
+  let cat = getSelectedChip('cat-chips') || 'Sin categoría';
+  let subcat = document.getElementById('proc-trigger').value || 'No especificado';
+  let fecha = document.getElementById('fecha').value.split('-').reverse().join('/');
+  let hora = document.getElementById('hora').value || '--:--';
+  let dir = document.getElementById('direccion').value || 'No registrada';
+  let calzada = document.getElementById('calzada-trigger').value || 'No especificado';
+  let pista = document.getElementById('pista-trigger').value || 'No especificado';
+  let transitText = document.getElementById('transit-trigger').value || 'No especificado';
+
+  let segpub = document.getElementById('res-segpub').value || 'No';
+  let carab = document.getElementById('res-carabineros').value || 'No';
+  let bomberos = document.getElementById('res-bomberos').value || 'No';
+  let profesionalMedico = document.getElementById('res-profesional-medico').value || 'No';
+  let emergenciasVeh = document.getElementById('res-emergencias-vehiculo').value;
+  let emergenciasOp = document.getElementById('res-emergencias-operador').value;
+  let emergenciasText = emergenciasVeh !== 'No' ? emergenciasVeh + (emergenciasOp ? ` (${emergenciasOp})` : '') : 'No';
+  let cmu = document.getElementById('res-cmu').value;
+  let ambulancia = getAmbulancia();
+  let desc = document.getElementById('descripcion').value || 'Sin descripción.';
+  let numeroProcedimiento = document.getElementById('nombre-pdf').value.trim();
+
+  window.subcatActual = subcat;
+  window.datosInforme = {
+    cat, subcat, numeroProcedimiento, fecha, hora, dir, calzada, pista,
+    segpub, carab, bomberos, profesionalMedico, emergenciasText, cmu, ambulancia,
+    transitText, desc
+  };
+
+  let report = `MUNICIPALIDAD DE LAS CONDES
+_________________________________________________________
+DATOS DEL PROCEDIMIENTO:
+
+Categoría: ${cat}
+Procedimiento: ${subcat}
+N° Procedimiento: ${numeroProcedimiento}
+Fecha: ${fecha}
+Hora: ${hora}
+Dirección: ${dir}
+Calzada: ${calzada}
+Pistas: ${pista}
+Tránsito: ${transitText}
+_________________________________________________________
+RECURSOS:
+
+Seguridad Pública: ${segpub}
+Carabineros: ${carab}
+Bomberos: ${bomberos}
+Equipo Emergencias: ${emergenciasText}
+Operador CMU: ${cmu}
+Ambulancia(s): ${ambulancia}
+Profesional Médico: ${profesionalMedico}
+_________________________________________________________
+DESCRIPCIÓN:
+
+${desc}
+_________________________________________________________`;
+
+  let lesText = '';
+  document.querySelectorAll('.lesionado-card').forEach(card => {
+    let id = card.id.split('-')[1];
+    let nom = document.getElementById(`les-nombre-${id}`)?.value;
+    let rut = document.getElementById(`les-rut-${id}`)?.value;
+    let tipoContainer = document.getElementById(`les-tipo-${id}`);
+    let tipoChips = tipoContainer ? tipoContainer.querySelectorAll('.chip.active') : [];
+    let tipos = Array.from(tipoChips).map(chip => chip.getAttribute('data-val') || chip.textContent.trim()).join(', ');
+    let obs = document.getElementById(`les-obs-${id}`)?.value;
+    if (nom || rut) {
+      lesText += `\n\nNOMBRE: ${nom || 'Anónimo'} \nRUT: ${rut || '---'} \nLesión: ${tipos || 'No especifica'}\nObservación: ${obs || ''}`;
+    }
+  });
+
+  if (lesText) report += `\nLESIONADOS:${lesText}`;
+
+  document.getElementById('report-text').textContent = report;
+  document.getElementById('modal').style.display = 'flex';
+}
+
+// ==================== MODAL Y LIMPIEZA ====================
+function cerrarModal(limpiar = false) {
+  document.getElementById('modal').style.display = 'none';
+  if (limpiar) {
+    limpiarFormularioPostPDF();
+  }
+}
+
+function limpiarFormularioPostPDF() {
+  // Campos de texto
+  document.getElementById('proc-trigger').value = '';
+  document.getElementById('nombre-pdf').value = '';
+  document.getElementById('direccion').value = '';
+  document.getElementById('calzada-trigger').value = '';
+  document.getElementById('pista-trigger').value = '';
+  document.getElementById('transit-trigger').value = '';
+  document.getElementById('ambulancia-trigger').value = '';
+  document.getElementById('ambulancia-otra').value = '';
+  document.getElementById('ambulancia-otra-container').style.display = 'none';
+  document.getElementById('descripcion').value = '';
+  document.getElementById('res-segpub').value = '';
+  document.getElementById('res-carabineros').value = '';
+  document.getElementById('res-bomberos').value = '';
+  document.getElementById('res-profesional-medico').value = '';
+  document.getElementById('res-emergencias-vehiculo').value = 'No';
+  document.getElementById('res-emergencias-operador').value = '';
+  document.getElementById('res-cmu').value = 'No';
+
+  // Chips de categoría
+  document.querySelectorAll('#cat-chips .chip').forEach(c => c.classList.remove('active'));
+
+  // Lesionados
+  document.getElementById('lesionados-container').innerHTML = '';
+  lesionadoCounter = 0;
+
+  // Fotos del registro fotográfico
+  document.getElementById('foto-input').value = '';
+  document.getElementById('preview-fotos').innerHTML = '';
+
+  // Resetear fecha y hora
+  const now = new Date();
+  document.getElementById('fecha').value = now.toISOString().split('T')[0];
+  document.getElementById('hora').value = now.toTimeString().slice(0, 5);
+
+  // Limpiar estilos de error
+  document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+
+  // Scroll al inicio
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  console.log('✅ Formulario limpiado post-PDF');
+}
+
+function copiarInforme() {
+  let texto = document.getElementById('report-text').textContent;
+  navigator.clipboard.writeText(texto).then(() => {
+    mostrarToast('📋 Informe copiado');
+  }).catch(() => {
+    mostrarToast('❌ No se pudo copiar');
+  });
+}
+
+async function comprimirImagen(file, calidad = 0.7, maxWidth = 800) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', calidad));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ==================== GENERAR PDF ====================
+async function generarPDF() {
+  if (isGeneratingPDF) {
+    mostrarToast('⏳ Generando PDF, espere...');
+    return;
+  }
+
+  isGeneratingPDF = true;
+  const btn = document.querySelector('.btn-submit');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span> Generando...';
+  btn.disabled = true;
+
+  const timeoutGlobal = setTimeout(() => {
+    console.warn('⚠️ Timeout global alcanzado. Liberando botón.');
+    isGeneratingPDF = false;
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }, 60000);
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'legal', orientation: 'portrait', compress: true });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 18;
+    const azul = [22, 100, 192];
+
+    let pageNum = 1;
+    let fotos = document.getElementById('foto-input').files;
+    let totalPages = 1 + (fotos.length > 0 ? Math.ceil(Math.min(fotos.length, 15) / 2) : 0);
+
+    function dibujarCabecera(paginaActual, totalPaginas, logoImg) {
+      const ALTO_CABECERA = 32;
+      doc.setFillColor(...azul);
+      doc.rect(0, 0, pageW, ALTO_CABECERA, 'F');
+      if (logoImg) doc.addImage(logoImg, 'JPEG', 8, 5, 16, 14);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(255, 255, 255);
+      doc.text('MUNICIPALIDAD DE LAS CONDES', 28, 12);
+      doc.setFontSize(7);
+      doc.setTextColor(200, 200, 220);
+      doc.text('Depto. Gestión de Riesgos y Desastres', 28, 16);
+      doc.setFontSize(12);
+      doc.setTextColor(255, 255, 255);
+      doc.text(' GRRD INFORME DE EMERGENCIA', pageW / 2, 25, { align: 'center' });
+      doc.setFontSize(7);
+      doc.text(`Pág. ${paginaActual} / ${totalPaginas}`, pageW - 15, 8, { align: 'center' });
+    }
+
+    let logoBase64 = null;
+    try {
+      const response = await fetch('https://i.postimg.cc/MGhWmdq0/LC.jpg');
+      const blob = await response.blob();
+      logoBase64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+    } catch(e) { console.error('Error cargando logo:', e); }
+
+    dibujarCabecera(1, totalPages, logoBase64);
+    let y = 46;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(80, 90, 110);
+    doc.text('DATOS DEL PROCEDIMIENTO:', margin, y);
+    y += 5;
+    doc.setDrawColor(100, 100, 120);
+    doc.line(margin, y - 2, pageW - margin, y - 2);
+
+    const datos = window.datosInforme || {};
+    const campos = [
+      `Categoría: ${datos.cat || ''}`,
+      `Procedimiento: ${datos.subcat || ''}`,
+      `N° Procedimiento: ${datos.numeroProcedimiento || ''}`,
+      `Fecha: ${datos.fecha || ''}`,
+      `Hora: ${datos.hora || ''}`,
+      `Dirección: ${datos.dir || ''}`,
+      `Calzada: ${datos.calzada || ''}`,
+      `Pistas: ${datos.pista || ''}`,
+      `Tránsito: ${datos.transitText || ''}`
+    ];
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(50, 60, 75);
+    for(let campo of campos) {
+      let parts = campo.split(':');
+      if(parts.length >= 2) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(parts[0] + ':', margin, y);
+        doc.setFont('helvetica', 'normal');
+        let valor = parts.slice(1).join(':');
+        let wrap = doc.splitTextToSize(valor, pageW - margin - 50);
+        doc.text(wrap, margin + 42, y);
+        y += Math.max(3.5, wrap.length * 3);
+      }
+    }
+    y += 2;
+    doc.line(margin, y, pageW - margin, y);
+    y += 3;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(80, 90, 110);
+    doc.text('RECURSOS:', margin, y);
+    y += 4.5;
+
+    const recursos = [
+      `Seguridad Pública: ${datos.segpub || 'No'}`,
+      `Carabineros: ${datos.carab || 'No'}`,
+      `Bomberos: ${datos.bomberos || 'No'}`,
+      `Profesional Médico: ${datos.profesionalMedico || 'No'}`,
+      `Emergencias: ${datos.emergenciasText || 'No'}`,
+      `CMU: ${datos.cmu || 'No'}`,
+      `Ambulancia(s): ${datos.ambulancia || 'No'}`
+    ];
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    for(let recurso of recursos) {
+      let parts = recurso.split(':');
+      if(parts.length >= 2) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(parts[0] + ':', margin, y);
+        doc.setFont('helvetica', 'normal');
+        let valor = parts.slice(1).join(':');
+        let wrap = doc.splitTextToSize(valor, pageW - margin - 50);
+        doc.text(wrap, margin + 42, y);
+        y += Math.max(3.5, wrap.length * 3);
+      }
+    }
+    y += 2;
+    doc.line(margin, y, pageW - margin, y);
+    y += 3;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(80, 90, 110);
+    doc.text('DESCRIPCIÓN:', margin, y);
+    y += 4.5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    let descWrap = doc.splitTextToSize(datos.desc || 'Sin descripción.', pageW - margin * 2);
+    doc.text(descWrap, margin, y);
+    y += descWrap.length * 3 + 3;
+    doc.line(margin, y, pageW - margin, y);
+    y += 3;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(80, 90, 110);
+    doc.text('DATOS DE LESIONADO (S):', margin, y);
+    y += 5;
+
+    for (let card of document.querySelectorAll('.lesionado-card')) {
+      let id = card.id.split('-')[1];
+      let nom = document.getElementById(`les-nombre-${id}`)?.value || 'Anónimo';
+      let rut = document.getElementById(`les-rut-${id}`)?.value || '---';
+      let tipoContainer = document.getElementById(`les-tipo-${id}`);
+      let tipoChips = tipoContainer ? tipoContainer.querySelectorAll('.chip.active') : [];
+      let tipos = Array.from(tipoChips).map(chip => chip.getAttribute('data-val') || chip.textContent.trim()).join(', ');
+      let obs = document.getElementById(`les-obs-${id}`)?.value || '';
+      let fotoInput = document.getElementById(`les-foto-input-${id}`);
+      let tieneFoto = fotoInput && fotoInput.files && fotoInput.files[0];
+
+      let alturaNecesaria = 55;
+      if (y + alturaNecesaria > pageH - 20) {
+        doc.addPage();
+        pageNum++;
+        dibujarCabecera(pageNum, totalPages, logoBase64);
+        y = 46;
+      }
+
+      doc.setDrawColor(200, 200, 220);
+      doc.setFillColor(248, 249, 250);
+      doc.roundedRect(margin, y - 2, pageW - margin * 2, alturaNecesaria, 3, 3, 'FD');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(22, 100, 192);
+      doc.text(`Lesionado #${id}:`, margin + 5, y);
+      y += 5;
+
+      let xFoto = pageW - margin - 95;
+      let yFoto = y - 5;
+      let anchoFoto = 60, altoFoto = 40;
+      let anchoTexto = xFoto - margin - 15;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(80, 90, 110);
+      doc.text('NOMBRE:', margin + 5, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 60, 75);
+      let nomWrap = doc.splitTextToSize(nom, anchoTexto - 30);
+      doc.text(nomWrap, margin + 32, y);
+      y += 4;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(80, 90, 110);
+      doc.text('RUT:', margin + 5, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 60, 75);
+      doc.text(rut, margin + 32, y);
+      y += 4;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(80, 90, 110);
+      doc.text('Lesión:', margin + 5, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 60, 75);
+      let tipoWrap = doc.splitTextToSize(tipos || 'No especifica', anchoTexto - 30);
+      doc.text(tipoWrap, margin + 32, y);
+      y += tipoWrap.length * 3 + 2;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(80, 90, 110);
+      doc.text('Observación:', margin + 5, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 60, 75);
+      let obsWrap = doc.splitTextToSize(obs || '---', anchoTexto - 30);
+      doc.text(obsWrap, margin + 32, y);
+      y += obsWrap.length * 3 + 2;
+
+      if (tieneFoto) {
+        let compressedImg = await comprimirImagen(fotoInput.files[0], 0.6);
+        doc.addImage(compressedImg, 'JPEG', xFoto, yFoto, anchoFoto, altoFoto, undefined, 'FAST');
+        doc.setFontSize(5);
+        doc.setTextColor(120, 120, 140);
+        doc.text('Foto carnet', xFoto + 30, yFoto + altoFoto + 4, { align: 'center' });
+      }
+
+      y += 12;
+    }
+
+    if (fotos.length > 0) {
+      doc.addPage();
+      pageNum++;
+      dibujarCabecera(pageNum, totalPages, logoBase64);
+      y = 46;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(...azul);
+      doc.text('REGISTRO FOTOGRÁFICO', margin, y);
+      y += 6;
+      let fotoW = 140, fotoH = 100;
+      let maxFotos = Math.min(fotos.length, 15);
+      for(let i = 0; i < maxFotos; i++) {
+        if(y + fotoH > pageH - 20) {
+          doc.addPage();
+          pageNum++;
+          dibujarCabecera(pageNum, totalPages, logoBase64);
+          y = 46;
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.setTextColor(...azul);
+          doc.text('REGISTRO FOTOGRÁFICO (continuación)', margin, y);
+          y += 6;
+        }
+        let compressedImg = await comprimirImagen(fotos[i], 0.5);
+        doc.addImage(compressedImg, 'JPEG', (pageW - fotoW) / 2, y, fotoW, fotoH, undefined, 'FAST');
+        doc.setFontSize(7);
+        doc.setTextColor(100, 100, 120);
+        doc.text(`Figura ${i + 1}`, pageW / 2, y + fotoH + 4, { align: 'center' });
+        y += fotoH + 8;
+      }
+    }
+
+    // ==================== NOMBRE Y DESCARGA ====================
+    const account = msalInstance.getAllAccounts()[0];
+    let usuario = 'USUARIO';
+    if (account && account.username) {
+      const local = account.username.split('@')[0];
+      usuario = local.charAt(0).toUpperCase() + local.slice(1);
+    }
+    const numeroProc = document.getElementById('nombre-pdf').value.trim() || 'SIN_NUM';
+    const hoy = new Date();
+    const dia = hoy.getDate().toString().padStart(2, '0');
+    const mes = (hoy.getMonth() + 1).toString().padStart(2, '0');
+    const anio = hoy.getFullYear();
+    const fechaStr = `${dia}-${mes}-${anio}`;
+    const nombreArchivo = `${usuario}_${fechaStr}_${numeroProc}.pdf`;
+
+    const pdfBlob = doc.output('blob');
+
+    // Descarga local
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(pdfBlob);
+    link.download = nombreArchivo;
+    link.click();
+
+    mostrarToast(`📎 PDF descargado: ${nombreArchivo}`);
+
+    // ✅ OPCIÓN A: Cerrar modal Y limpiar formulario
+    cerrarModal(true);
+
+  } catch (error) {
+    console.error('❌ Error generando PDF:', error);
+    mostrarToast('❌ Error al generar el PDF');
+    // ⚠️ En caso de error, NO limpiamos (para no perder datos del usuario)
+    cerrarModal(false);
+  } finally {
+    clearTimeout(timeoutGlobal);
+    isGeneratingPDF = false;
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+}
+
+// ==================== PREVIEW FOTOS ====================
+const fotoInput = document.getElementById('foto-input');
+const previewFotos = document.getElementById('preview-fotos');
+if (fotoInput) {
+  fotoInput.addEventListener('change', function() {
+    previewFotos.innerHTML = '';
+    Array.from(this.files).forEach((file) => {
+      const reader = new FileReader();
+      const div = document.createElement('div');
+      div.className = 'preview-img';
+      reader.onload = function(e) {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        div.appendChild(img);
+        const btn = document.createElement('button');
+        btn.textContent = '✕';
+        btn.onclick = () => {
+          const dt = new DataTransfer();
+          Array.from(fotoInput.files).filter(f => f !== file).forEach(f => dt.items.add(f));
+          fotoInput.files = dt.files;
+          div.remove();
+        };
+        div.appendChild(btn);
+      };
+      reader.readAsDataURL(file);
+      previewFotos.appendChild(div);
+    });
+  });
+}
+
+verificarSesion();
+
+window.toggleChip = toggleChip;
+window.addLesionado = addLesionado;
+window.eliminarLesionado = eliminarLesionado;
+window.generarInforme = generarInforme;
+window.cerrarModal = cerrarModal;
+window.copiarInforme = copiarInforme;
+window.generarPDF = generarPDF;
+window.previewLesionadoFoto = previewLesionadoFoto;
+
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) cerrarModal(false);
+});
+</script>
+</body>
+</html>
