@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
 <title>Municipalidad de Las Condes</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
 <style>
@@ -62,17 +61,6 @@
     color: white; line-height: 1.3;
   }
   .logo-texto small { font-size: 9px; font-weight: normal; opacity: 0.9; }
-
-  .btn-sesion {
-    background: rgba(255,255,255,0.2);
-    border: none; border-radius: 20px;
-    padding: 5px 12px; color: white;
-    cursor: pointer; font-size: 11px;
-    font-family: 'Inter', sans-serif;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 130px; transition: all 0.2s;
-  }
-  .btn-sesion:hover { background: rgba(255,255,255,0.3); }
 
   .title-stack { text-align: center; }
   .title-emergencia {
@@ -268,7 +256,6 @@
   @media (max-width: 768px) {
     .header-top { flex-wrap: wrap; justify-content: center; text-align: center; }
     .logo-muni { flex: 1; }
-    .btn-sesion { max-width: 100px; font-size: 9px; padding: 3px 8px; }
     .title-emergencia { font-size: 14px; }
     .section { margin: 8px; padding: 12px; }
     .section-label { font-size: 11px; }
@@ -295,7 +282,6 @@
         <small>Depto. Gestión de Riesgos y Desastres</small>
       </div>
     </div>
-    <button id="btn-sesion" class="btn-sesion">🔐 Iniciar sesión</button>
     <div class="title-stack">
       <div class="title-emergencia">INFORME DE EMERGENCIA</div>
     </div>
@@ -563,123 +549,6 @@ const AMBULANCIAS_OPCIONES = ["Dávila", "Hatzalah", "Indisa", "SAPU", "Santa Ma
 
 let lesionadoCounter = 0;
 let isGeneratingPDF = false;
-
-// ==================== CONFIGURACIÓN MICROSOFT ENTRA ID ====================
-const msalConfig = {
-  auth: {
-    clientId: '7e57c5ff-f9a0-4a58-a038-bf80467aadd3',
-    authority: 'https://login.microsoftonline.com/3b2a8aaa-7404-4137-8bae-cbd67f7003c2',
-    redirectUri: window.location.origin
-  },
-  cache: { cacheLocation: 'localStorage' }
-};
-
-const msalInstance = new msal.PublicClientApplication(msalConfig);
-let usuarioAutenticado = null;
-
-// Dominio permitido (respaldo por si Azure no filtra correctamente)
-const DOMINIO_PERMITIDO = 'lascondes.cl';
-
-// ==================== AUTENTICACIÓN ====================
-async function obtenerToken() {
-  try {
-    const account = msalInstance.getAllAccounts()[0];
-    if (!account) return null;
-    const response = await msalInstance.acquireTokenSilent({
-      account: account,
-      scopes: ['user.read']
-    });
-    return response.accessToken;
-  } catch (error) {
-    console.warn('⚠️ Error obteniendo token:', error.message);
-    return null;
-  }
-}
-
-function validarDominio(account) {
-  if (!account || !account.username) return false;
-  const partes = account.username.split('@');
-  if (partes.length !== 2) return false;
-  return partes[1].toLowerCase() === DOMINIO_PERMITIDO;
-}
-
-function actualizarBotonSesion(autenticado) {
-  const btnSesion = document.getElementById('btn-sesion');
-  if (!btnSesion) return;
-  if (autenticado && usuarioAutenticado) {
-    const nombreUsuario = usuarioAutenticado.username.split('@')[0];
-    btnSesion.innerHTML = `👤 ${nombreUsuario.substring(0, 15)}`;
-    btnSesion.title = 'Cerrar sesión';
-    btnSesion.onclick = cerrarSesionMicrosoft;
-  } else {
-    btnSesion.innerHTML = '🔐 Iniciar sesión';
-    btnSesion.title = 'Iniciar sesión con cuenta @lascondes.cl';
-    btnSesion.onclick = iniciarSesionMicrosoft;
-  }
-}
-
-async function cerrarSesionMicrosoft() {
-  await msalInstance.logoutRedirect();
-  usuarioAutenticado = null;
-  actualizarBotonSesion(false);
-  mostrarToast('🔓 Sesión cerrada');
-}
-
-async function iniciarSesionMicrosoft() {
-  try {
-    const accounts = msalInstance.getAllAccounts();
-    if (accounts.length > 0) {
-      if (!validarDominio(accounts[0])) {
-        mostrarToast('❌ Solo se permiten cuentas @lascondes.cl');
-        await msalInstance.logoutRedirect();
-        return null;
-      }
-      usuarioAutenticado = accounts[0];
-      await obtenerToken();
-      mostrarToast(`✅ Sesión iniciada: ${usuarioAutenticado.username}`);
-      actualizarBotonSesion(true);
-      return usuarioAutenticado;
-    }
-    await msalInstance.loginRedirect({ scopes: ['user.read'] });
-    return null;
-  } catch (error) {
-    mostrarToast('❌ Error al iniciar sesión');
-    return null;
-  }
-}
-
-async function handleRedirectResponse() {
-  try {
-    const response = await msalInstance.handleRedirectPromise();
-    if (response && response.account) {
-      if (!validarDominio(response.account)) {
-        mostrarToast('❌ Solo se permiten cuentas @lascondes.cl');
-        await msalInstance.logoutRedirect();
-        return;
-      }
-      usuarioAutenticado = response.account;
-      await obtenerToken();
-      mostrarToast(`✅ Bienvenido, ${usuarioAutenticado.username}`);
-      actualizarBotonSesion(true);
-    }
-  } catch (error) {
-    console.warn('Error en redirect:', error);
-  }
-}
-
-async function verificarSesion() {
-  await handleRedirectResponse();
-  const accounts = msalInstance.getAllAccounts();
-  if (accounts.length > 0) {
-    if (!validarDominio(accounts[0])) {
-      await msalInstance.logoutRedirect();
-      return;
-    }
-    usuarioAutenticado = accounts[0];
-    await obtenerToken();
-    actualizarBotonSesion(true);
-  }
-}
 
 // ==================== DROPDOWNS ====================
 function toggleDropdown(listId) {
@@ -1295,19 +1164,13 @@ async function generarPDF() {
     }
 
     // ==================== NOMBRE Y DESCARGA ====================
-    const account = msalInstance.getAllAccounts()[0];
-    let usuario = 'USUARIO';
-    if (account && account.username) {
-      const local = account.username.split('@')[0];
-      usuario = local.charAt(0).toUpperCase() + local.slice(1);
-    }
     const numeroProc = document.getElementById('nombre-pdf').value.trim() || 'SIN_NUM';
     const hoy = new Date();
     const dia = hoy.getDate().toString().padStart(2, '0');
     const mes = (hoy.getMonth() + 1).toString().padStart(2, '0');
     const anio = hoy.getFullYear();
     const fechaStr = `${dia}-${mes}-${anio}`;
-    const nombreArchivo = `${usuario}_${fechaStr}_${numeroProc}.pdf`;
+    const nombreArchivo = `Informe_${fechaStr}_${numeroProc}.pdf`;
 
     const pdfBlob = doc.output('blob');
 
@@ -1361,8 +1224,6 @@ if (fotoInput) {
     });
   });
 }
-
-verificarSesion();
 
 window.toggleChip = toggleChip;
 window.addLesionado = addLesionado;
